@@ -1,0 +1,280 @@
+= SPEC-001: Felhasználókezelő Mikroszolgáltatás .NET 8 alapon
+:sectnums:
+:toc:
+
+
+== Background
+
+A projekt célja egy felhasználókezelésre szolgáló mikroszolgáltatás tervezése és megvalósítása .NET 8 alapon. A szolgáltatásnak önállóan kell működnie, de a jövőben integrálható más alkalmazásokkal. Az authorizáció egy külön alkalmazás feladata lesz.
+
+== Requirements
+
+A felhasználókezelő mikroszolgáltatásnak a következő követelményeknek kell megfelelnie:
+
+- **Felhasználói regisztráció** (Must)
+- **Felhasználói bejelentkezés** (Must)
+- **Felhasználói profil megtekintése és módosítása** (Must)
+- **Jelszó visszaállítása** (Must)
+- **Kétszintű azonosítás (2FA)** támogatása (Must)
+  - Üzemeltetői hatáskörben eldönthető, hogy kötelező, választható, vagy nincs 2FA
+- **SOLID elveknek megfelelő tervezés** (Must)
+- **Clean Code irányelvek betartása** (Must)
+- **GDPR kompatibilitás** (Must)
+- **Skálázhatóság**: Kezelni tudjon nagyszámú felhasználót egyidejűleg (Should)
+- **Jó teljesítmény**: Gyors válaszidők biztosítása (Should)
+
+== Method
+
+A felhasználókezelő mikroszolgáltatás architektúráját az alábbiak szerint tervezzük meg:
+
+=== Architektúra Áttekintés
+
+[plantuml]
+@startuml
+package "Felhasználókezelő Mikroszolgáltatás" {
+  [Web API] --> [Business Logic]
+  [Business Logic] --> [Data Access]
+  [Data Access] --> [Database]
+}
+
+package "Külső Szolgáltatások" {
+  [Email Service]
+  [SMS Service]
+}
+
+package "Kommunikációs Megoldások" {
+  [Message Broker]
+  [gRPC Service]
+}
+@enduml
+
+A mikroszolgáltatás három fő rétegre tagolódik:
+1. **Web API**: Az ASP.NET Core alapú RESTful API réteg, amely a kliensekkel kommunikál.
+2. **Business Logic**: Az üzleti logika réteg, amely a különböző felhasználókezelési műveleteket végzi.
+3. **Data Access**: Az adat-hozzáférési réteg, amely kapcsolatot biztosít az adatbázissal.
+
+=== Adatbázis Tervezés
+
+A felhasználói adatok tárolására egy SQL alapú adatbázist használunk (például PostgreSQL). Az alábbiakban bemutatjuk az adatbázis sémát.
+
+[plantuml]
+@startuml
+entity User {
+  +UUID id
+  --
+  +string username
+  +string email
+  +string passwordHash
+  +string salt
+  +datetime createdAt
+  +datetime updatedAt
+  +boolean is2FAEnabled
+}
+
+entity UserProfile {
+  +UUID userId
+  --
+  +string firstName
+  +string lastName
+  +string phoneNumber
+  +string address
+}
+
+User ||..|| UserProfile : "has"
+@enduml
+
+- **User**: A felhasználók alapvető adatai.
+- **UserProfile**: A felhasználók profiladatainak részletei.
+
+=== Üzleti Logika
+
+A szolgáltatás üzleti logikája a következő fő funkciókat tartalmazza:
+
+- **Regisztráció**: Új felhasználó létrehozása és tárolása az adatbázisban.
+- **Bejelentkezés**: Felhasználói hitelesítés és session kezelés.
+- **Profilkezelés**: Felhasználói profil megtekintése és módosítása.
+- **Jelszó visszaállítás**: Jelszó visszaállítási folyamatok kezelése.
+- **2FA kezelés**: Kétszintű azonosítás engedélyezése, letiltása és ellenőrzése.
+
+=== Kommunikáció Más Mikroszolgáltatásokkal
+
+A mikroszolgáltatás más szolgáltatásokkal történő kommunikációjára az alábbi megoldásokat alkalmazzuk:
+
+- **RESTful API**: A szolgáltatás RESTful API-kat használ a szinkron kommunikációhoz más szolgáltatásokkal.
+- **Message Broker (RabbitMQ/Kafka)**: Aszinkron kommunikációhoz és eseményalapú architektúrához message broker megoldásokat használunk.
+- **gRPC**: Alacsony késleltetésű és nagy teljesítményű kommunikációhoz gRPC szolgáltatásokat alkalmazunk.
+
+=== Teljesítmény Optimalizálás
+
+- **Caching**: In-memory caching és Redis használata a gyorsabb adatlekérdezés érdekében.
+- **Load Balancing**: Terheléselosztó megoldások használata a web API és adatbázis rétegek között a jobb skálázhatóság érdekében.
+- **Kubernetes/OpenShift Kompatibilitás**: A mikroszolgáltatást konténerizáljuk Docker használatával, és Kubernetes/OpenShift kompatibilis deployment fájlokat készítünk a skálázhatóság és magas rendelkezésre állás érdekében.
+
+=== Konkurencia Kezelés
+
+A konkurencia kezelése érdekében biztosítjuk, hogy mindig az utolsó módosítás érvényes. Az alábbi megoldásokat alkalmazzuk:
+
+- **Optimistic Concurrency Control**: Az Entity Framework Core támogatja az optimista zárolást, amely biztosítja, hogy a módosítások előtt az adatok érvényességét ellenőrizzük. Ha egy adat már megváltozott a mentés előtt, egy ütközési hiba történik, és a művelet újrapróbálható.
+- **Timestamp Columns**: Az adatbázisban timestamp oszlopokat használunk a változások nyomon követésére és ütközések kezelésére.
+
+=== Performanciára Vonatkozó Követelmények
+
+A következő teljesítménykövetelményeket állítjuk fel:
+
+- **Válaszidő**: Minden API végpont válaszideje legyen kevesebb mint 100 ms a tipikus terhelés alatt.
+- **Terhelhetőség**: A rendszernek legalább 10,000 egyidejű felhasználót kell tudnia kezelni.
+- **Áteresztőképesség**: A rendszernek legalább 1000 kérést kell tudnia kezelni másodpercenként csúcsidőben.
+- **Skálázhatóság**: A rendszer könnyen skálázható legyen horizontálisan Kubernetes/OpenShift környezetben.
+
+== Implementation
+
+Az implementáció lépései az alábbiak:
+
+1. **Projekt Struktúra Létrehozása**:
+   - Hozzuk létre az alap .NET 8 projekt struktúrát, amely tartalmazza a Web API, Business Logic és Data Access rétegeket.
+
+2. **Adatbázis Beállítása**:
+   - Hozzuk létre a PostgreSQL adatbázist és az adatbázis sémát.
+   - Implementáljuk az Entity Framework Core-t az adatbázis eléréséhez és kezeléséhez.
+
+3. **Web API Fejlesztése**:
+   - Implementáljuk a RESTful API-kat a felhasználói regisztrációhoz, bejelentkezéshez, profilkezeléshez és jelszó visszaállításhoz.
+   - Implementáljuk a 2FA kezelést az API végpontokon keresztül.
+
+4. **Üzleti Logika Implementálása**:
+   - Implementáljuk az üzleti logikát a különböző felhasználókezelési műveletekhez.
+
+5. **Kommunikáció Más Szolgáltatásokkal**:
+   - Implementáljuk a RESTful API kommunikációt más szolgáltatásokkal.
+   - Konfiguráljuk a RabbitMQ/Kafka message brokereket az aszinkron kommunikációhoz.
+   - Implementáljuk a gRPC szolgáltatásokat a nagy teljesítményű kommunikációhoz.
+
+6. **Teljesítmény Optimalizálása**:
+   - Implementáljuk a caching megoldásokat (in-memory caching, Redis).
+   - Konfiguráljuk a load balancert a terhelés elosztásához.
+
+7. **Konténerizáció és Deployment**:
+   - Készítsünk Dockerfile-t a mikroszolgáltatás konténerizálásához.
+   - Készítsünk Kubernetes/OpenShift deployment fájlokat és konfigurációkat.
+
+== Milestones
+
+1. **Első Iteráció**: Alap projekt struktúra létrehozása és adatbázis beállítása.
+2. **Második Iteráció**: Web API fejlesztése és üzleti logika implementálása.
+3. **Harmadik Iteráció**: Kommunikáció más szolgáltatásokkal és teljesítmény optimalizálása.
+4. **Negyedik Iteráció**: Konténerizáció és Kubernetes/OpenShift deployment.
+5. **Végső Iteráció**: Részletes tesztelés és élesítés.
+
+== Gathering Results
+
+A rendszer teljesítményének és megfelelőségének értékelése a következő módszerekkel történik:
+
+- **Unit és Integrációs Tesztek**: A funkciók és komponensek helyes működésének ellenőrzése.
+- **Teljesítmény Tesztelés**: A válaszidők és a terheléses tesztek alapján a rendszer teljesítményének értékelése.
+- **Felhasználói Visszajelzések**: A felhasználói élmény és az esetleges problémák visszajelzései alapján történő finomhangolás.
+
+== API Endpointok Dokumentációja
+
+A következő API endpointok kerülnek implementálásra:
+
+=== POST /api/users/register
+
+- **Leírás**: Új felhasználó regisztrálása.
+- **Kérés**:
+  - Body: `{"username": "string", "email": "string", "password": "string"}`
+- **Válasz**:
+  - 201 Created: `{"id": "UUID", "username": "string", "email": "string", "createdAt": "datetime"}`
+
+=== POST /api/users/login
+
+- **Leírás**: Felhasználói bejelentkezés.
+- **Kérés**:
+  - Body: `{"username": "string", "password": "string"}`
+- **Válasz**:
+  - 200 OK: `{"token": "string", "expiresIn": "int"}`
+
+=== GET /api/users/profile
+
+- **Leírás**: Felhasználói profil megtekintése.
+- **Kérés**:
+  - Header: `Authorization: Bearer <token>`
+- **Válasz**:
+  - 200 OK: `{"id": "UUID", "username": "string", "email": "string", "firstName": "string", "lastName": "string", "phoneNumber": "string", "address": "string"}`
+
+=== PUT /api/users/profile
+
+- **Leírás**: Felhasználói profil módosítása.
+- **Kérés**:
+  - Header: `Authorization: Bearer <token>`
+  - Body: `{"firstName": "string", "lastName": "string", "phoneNumber": "string", "address": "string"}`
+- **Válasz**:
+  - 200 OK: `{"id": "UUID", "username": "string", "email": "string", "firstName": "string", "lastName": "string", "phoneNumber": "string", "address": "string"}`
+
+=== POST /api/users/reset-password
+
+- **Leírás**: Jelszó visszaállítási kérelem.
+- **Kérés**:
+  - Body: `{"email": "string"}`
+- **Válasz**:
+  - 200 OK: `{"message": "Password reset link sent to your email"}`
+
+=== POST /api/users/2fa/enable
+
+- **Leírás**: Kétszintű azonosítás engedélyezése.
+- **Kérés**:
+  - Header: `Authorization: Bearer <token>`
+- **Válasz**:
+  - 200 OK: `{"message": "2FA enabled"}`
+
+=== POST /api/users/2fa/disable
+
+- **Leírás**: Kétszintű azonosítás letiltása.
+- **Kérés**:
+  - Header: `Authorization: Bearer <token>`
+- **Válasz**:
+  - 200 OK: `{"message": "2FA disabled"}`
+
+=== GET /api/users/2fa/status
+
+- **Leírás**: Kétszintű azonosítás státuszának lekérdezése.
+- **Kérés**:
+  - Header: `Authorization: Bearer <token>`
+- **Válasz**:
+  - 200 OK: `{"is2FAEnabled": "boolean"}`
+
+=== POST /api/users/logout
+
+- **Leírás**: Felhasználói kijelentkezés.
+- **Kérés**:
+  - Header: `Authorization: Bearer <token>`
+- **Válasz**:
+  - 200 OK: `{"message": "Logged out successfully"}`
+
+== Adatbázis Beállítás
+
+Az adatbázis kapcsolatának beállításához a következő lépéseket kell követni:
+
+1. **Adatbázis Létrehozása**:
+   - Hozzunk létre egy PostgreSQL adatbázist a szükséges táblákkal és sémával.
+   - Az adatbázis sémája az alábbiakban látható.
+
+```sql
+CREATE TABLE Users (
+  id UUID PRIMARY KEY,
+  username VARCHAR(255) NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  passwordHash VARCHAR(255) NOT NULL,
+  salt VARCHAR(255) NOT NULL,
+  createdAt TIMESTAMP NOT NULL,
+  updatedAt TIMESTAMP NOT NULL,
+  is2FAEnabled BOOLEAN NOT NULL
+);
+
+CREATE TABLE UserProfiles (
+  userId UUID PRIMARY KEY,
+  firstName VARCHAR(255),
+  lastName VARCHAR(255),
+  phoneNumber VARCHAR(20),
+  address VARCHAR(255),
+  FOREIGN KEY (userId) REFERENCES Users(id)
+);
