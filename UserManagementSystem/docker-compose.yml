@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  command-service:
+    image: usermanagement-command-service
+    build:
+      context: ./src/UserManagement.CommandService/Api
+    ports:
+      - "5001:8080"
+  
+  query-service:
+    image: usermanagement-query-service
+    build:
+      context: ./src/UserManagement.QueryService/Api
+    ports:
+      - "5002:8080"
