@@ -1,0 +1,19 @@
+<h1 mat-dialog-title>Új felhasználó létrehozása</h1>
+<div mat-dialog-content>
+  <mat-form-field>
+    <mat-label>Felhasználónév</mat-label>
+    <input matInput [(ngModel)]="userName">
+  </mat-form-field>
+  <mat-form-field>
+    <mat-label>Email</mat-label>
+    <input matInput [(ngModel)]="email">
+  </mat-form-field>
+  <mat-form-field>
+    <mat-label>Jelszó</mat-label>
+    <input matInput [(ngModel)]="password" type="password">
+  </mat-form-field>
+</div>
+<div mat-dialog-actions>
+  <button mat-button (click)="onNoClick()">Mégse</button>
+  <button mat-button color="primary" (click)="create()">Létrehozás</button>
+</div>

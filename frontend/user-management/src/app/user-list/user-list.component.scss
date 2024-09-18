@@ -1,0 +1,28 @@
+.user-list-container {
+  padding: 20px;
+}
+
+table {
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+.mat-column-actions {
+  width: 120px;
+}
+
+.action-buttons {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+}
+
+.action-buttons button {
+  margin-right: 8px;
+}
+
+.action-button-container {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 20px;
+}

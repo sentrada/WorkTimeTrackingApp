@@ -1,0 +1,16 @@
+<h1 mat-dialog-title>Szerkesztés</h1>
+<div mat-dialog-content>
+  <p><strong>ID:</strong> {{data.userId}}</p>
+  <mat-form-field>
+    <mat-label>Felhasználónév</mat-label>
+    <input matInput [(ngModel)]="data.userName">
+  </mat-form-field>
+  <mat-form-field>
+    <mat-label>Email</mat-label>
+    <input matInput [(ngModel)]="data.email">
+  </mat-form-field>
+</div>
+<div mat-dialog-actions>
+  <button mat-button (click)="onNoClick()">Mégse</button>
+  <button mat-button (click)="save()">Mentés</button>
+</div>

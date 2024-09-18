@@ -1,0 +1,12 @@
+{
+  "configurations": [
+
+    {
+      "name": "ng serve",
+      "type": "npm",
+      "workingDir": "G:\\Sources\\Github\\WorkTimeTrackingApp\\frontend\\user-management",
+      "command": "run",
+      "scripts": "ng serve"
+    }
+  ]
+}

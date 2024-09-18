@@ -1,0 +1,8 @@
+<h1 mat-dialog-title>Törlés megerősítése</h1>
+<div mat-dialog-content>
+  <p>Biztosan törölni szeretnéd ezt a felhasználót?</p>
+</div>
+<div mat-dialog-actions>
+  <button mat-button (click)="onNoClick()">Nem</button>
+  <button mat-button color="warn" (click)="confirmDelete()">Igen</button>
+</div>

@@ -5,6 +5,17 @@ using UserManagement.Common.Events;
 
 WebApplicationBuilder? builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAngularClient",
+        corsPolicyBuilder =>
+        {
+            corsPolicyBuilder.WithOrigins("*")
+                .AllowAnyHeader()
+                .AllowAnyMethod();
+        });
+});
+
 BsonClassMap.RegisterClassMap<BaseEvent>();
 BsonClassMap.RegisterClassMap<UserCreatedEvent>();
 BsonClassMap.RegisterClassMap<UserUpdatedEvent>();
@@ -22,7 +33,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-
+app.UseCors("AllowAngularClient");
+app.UseRouting();
 app.MapControllers(); 
 
 app.Run();
